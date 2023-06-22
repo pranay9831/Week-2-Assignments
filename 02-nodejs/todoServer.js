@@ -41,9 +41,126 @@
  */
 const express = require('express');
 const bodyParser = require('body-parser');
+const fs = require('fs');
+const { v4: uuidv4 } = require('uuid');
+let todos = JSON.parse(fs.readFileSync('./tododb.json', 'utf8', (err, data) => {
+
+  return data
+}))
 
 const app = express();
+const port = 3000;
 
 app.use(bodyParser.json());
+
+// Getting all the Todos
+function getTodos(req, res) {
+  res.send(todos)
+}
+
+
+//Adding TOdo
+addTodos = (req, res) => {
+  const todo = req.body;
+  const f_id = uuidv4();
+  todo["id"] = f_id
+  todos.push(todo);
+
+  fs.writeFileSync('todoDb.json', JSON.stringify(todos), (err) => { if (err) { console.log("Cannot write") } })
+  res.status(201)
+  res.send(todo)
+}
+
+idExists = (check_id) => {
+  let flag = 0;
+  console.log(todos)
+  for (let i = 0; i < todos.length; i++) {
+
+    if (check_id == todos[i].id) {
+      flag = 1
+      console.log(todos[i]);
+      return todos[i];
+    }
+  }
+  if (flag === 0) {
+    return -1;
+  }
+
+}
+
+getTodoById = (req, res) => {
+  let check_id = req.params.id;
+  console.log(typeof (check_id))
+  let serverRes = idExists(check_id)
+  if (serverRes === -1) {
+    res.status(404)
+    res.send({ "response": `element with id ${check_id} Not found ` });
+  }
+  else {
+
+    res.send(serverRes);
+  }
+
+
+
+}
+
+updateTodoById = (req, res) => {
+  let check_id = req.params.id;
+  let updated_items = req.body;
+  let check = idExists(check_id)
+  if (check === -1) {
+    res.status(404)
+    res.send({ "response": `element with id ${check_id} Not found ` });
+  }
+
+  else {
+
+    console.log(check)
+
+    for (let i in updated_items) {
+      todos[i] = updated_items[i];
+
+    }
+    fs.writeFileSync('todoDb.json', JSON.stringify(todos), (err) => { if (err) { console.log("Cannot write") } })
+    console.log(updated_items)
+    res.send("Content Updated")
+    console.log(check.id)
+  }
+
+}
+
+deleteTodoById = (req, res) => {
+  check_id = req.params.id;
+  if (idExists(check_id) === -1) {
+    res.status(404)
+  }
+  else {
+
+    for (let i = 0; i < todos.length; i++) {
+      if (todos[i]["id"] == check_id) {
+        todos.splice(i, 1);
+        fs.writeFileSync('todoDb.json', JSON.stringify(todos), (err) => { if (err) { console.log("Cannot write") } })
+        console.log()
+        res.send(todos)
+      }
+    }
+
+  }
+}
+
+//getting Todo by Id
+app.get('/todos', getTodos)
+
+
+app.post('/todos', addTodos)
+
+app.get('/todos/:id', getTodoById)
+
+app.put('/todos/:id', updateTodoById)
+
+app.delete('/todos/:id', deleteTodoById)
+
+app.listen(port, () => { console.log(`listening on Port ${port}`) })
 
 module.exports = app;
